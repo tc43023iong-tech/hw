@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+.paper-texture {
+  background-color: #faf7f2;
+  background-image: radial-gradient(#d6d3cd 0.8px, transparent 0.8px);
+  background-size: 16px 16px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-full {
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid #999;
+  }
+}

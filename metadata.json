@@ -1,0 +1,6 @@
+{
+  "name": "同善堂小學 每日家課手冊登記系統",
+  "description": "根據同善堂中學小學部2026-2027學年校曆表設計的每日家課手冊登記與測考備註系統，支援雙頁手冊排版與雲端即時同步。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

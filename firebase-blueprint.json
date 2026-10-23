@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "HandbookWeek": {
+      "title": "HandbookWeek",
+      "description": "Weekly handbook metadata including test and exam remarks written once per week across the two-page spread",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "weekNumber": { "type": "number" },
+        "academicYear": { "type": "string", "maxLength": 32 },
+        "classId": { "type": "string", "maxLength": 64 },
+        "examRemarks": { "type": "string", "maxLength": 2000, "description": "Weekly remarks specifically for test and exam dates (測考日期備註)" },
+        "teacherSignature": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "weekNumber", "academicYear", "classId"]
+    },
+    "DailyEntry": {
+      "title": "DailyEntry",
+      "description": "Daily homework record for school days containing Chinese, Math, English, General Studies and Other subjects",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "weekNumber": { "type": "number" },
+        "dayOfWeek": { "type": "number" },
+        "classId": { "type": "string", "maxLength": 64 },
+        "chinese": { "type": "string", "maxLength": 1000 },
+        "math": { "type": "string", "maxLength": 1000 },
+        "english": { "type": "string", "maxLength": 1000 },
+        "generalStudies": { "type": "string", "maxLength": 1000 },
+        "other": { "type": "string", "maxLength": 1000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "date", "weekNumber", "classId"]
+    },
+    "SchoolConfig": {
+      "title": "SchoolConfig",
+      "description": "School configuration, classes, and calendar custom notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "selectedClass": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/weeks/{weekId}": {
+      "schema": { "$ref": "#/entities/HandbookWeek" },
+      "description": "Weekly handbook documents storing test and exam remarks"
+    },
+    "/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/DailyEntry" },
+      "description": "Daily homework records for each school day"
+    },
+    "/config/{configId}": {
+      "schema": { "$ref": "#/entities/SchoolConfig" },
+      "description": "App configuration and active class settings"
+    }
+  }
+}

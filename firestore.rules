@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.:]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidHandbookWeek(data) {
+      return data.keys().hasAll(['id', 'weekNumber', 'academicYear', 'classId']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.weekNumber is number &&
+             data.academicYear is string && data.academicYear.size() <= 32 &&
+             data.classId is string && data.classId.size() <= 64 &&
+             (!('examRemarks' in data) || (data.examRemarks is string && data.examRemarks.size() <= 5000)) &&
+             (!('teacherSignature' in data) || (data.teacherSignature is string && data.teacherSignature.size() <= 128)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidDailyEntry(data) {
+      return data.keys().hasAll(['id', 'date', 'weekNumber', 'classId']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.date is string && data.date.size() <= 32 &&
+             data.weekNumber is number &&
+             data.classId is string && data.classId.size() <= 64 &&
+             (!('dayOfWeek' in data) || data.dayOfWeek is number) &&
+             (!('chinese' in data) || (data.chinese is string && data.chinese.size() <= 5000)) &&
+             (!('math' in data) || (data.math is string && data.math.size() <= 5000)) &&
+             (!('english' in data) || (data.english is string && data.english.size() <= 5000)) &&
+             (!('generalStudies' in data) || (data.generalStudies is string && data.generalStudies.size() <= 5000)) &&
+             (!('other' in data) || (data.other is string && data.other.size() <= 5000)) &&
+             (!('duty' in data) || (data.duty is string && data.duty.size() <= 2000)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 5000)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidSchoolConfig(data) {
+      return data.keys().hasAll(['id']) &&
+             data.id is string && data.id.size() <= 128 &&
+             (!('selectedClass' in data) || (data.selectedClass is string && data.selectedClass.size() <= 64)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Handbook weeks: weekly test & exam remarks
+    match /weeks/{weekId} {
+      allow read: if true;
+      allow create, update: if isValidId(weekId) && isValidHandbookWeek(incoming());
+      allow delete: if isValidId(weekId);
+    }
+
+    // Daily homework entries
+    match /entries/{entryId} {
+      allow read: if true;
+      allow create, update: if isValidId(entryId) && isValidDailyEntry(incoming());
+      allow delete: if isValidId(entryId);
+    }
+
+    // Config
+    match /config/{configId} {
+      allow read: if true;
+      allow create, update: if isValidId(configId) && isValidSchoolConfig(incoming());
+      allow delete: if isValidId(configId);
+    }
+  }
+}

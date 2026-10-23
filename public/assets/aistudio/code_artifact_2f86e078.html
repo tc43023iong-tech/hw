@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>同善堂中學小學部 - 每日家課手冊登記系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons for friendly UI -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d'
+            },
+            paper: '#faf7f2',
+            bookred: '#b91c1c'
+          },
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'system-ui', 'sans-serif'],
+            handwriting: ['KaiTi', 'BiauKai', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Paper styling and rule lines mimicking actual homework diaries */
+    .paper-texture {
+      background-color: #fcfbf7;
+      background-image: radial-gradient(#e5e7eb 0.75px, transparent 0.75px);
+      background-size: 16px 16px;
+    }
+    .diary-grid-line {
+      border-color: #cbd5e1;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-full { width: 100% !important; margin: 0 !important; box-shadow: none !important; border: 1px solid #999; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation & Sync Status Header -->
+  <header class="bg-emerald-800 text-white shadow-md sticky top-0 z-30 no-print">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white text-emerald-800 p-2 rounded-xl shadow-inner flex items-center justify-center font-bold">
+          <i class="ph ph-notebook text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg md:text-xl font-bold tracking-tight">同善堂中學小學部</h1>
+          <p class="text-xs text-emerald-200">2026-2027 年度 每日家課手冊登記系統</p>
+        </div>
+      </div>
+
+      <!-- Cloud Sync & Tools -->
+      <div class="flex items-center gap-2">
+        <div id="syncStatusBadge" class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-900/60 border border-emerald-600/50">
+          <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="syncText">正在連線雲端...</span>
+        </div>
+
+        <button onclick="window.print()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-xs font-medium rounded-lg flex items-center gap-1 transition shadow-sm" title="列印或匯出當前頁">
+          <i class="ph ph-printer text-base"></i>
+          <span class="hidden sm:inline">列印 / 存為PDF</span>
+        </button>
+
+        <button onclick="toggleQuickCalendarModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-medium rounded-lg flex items-center gap-1 transition shadow-sm">
+          <i class="ph ph-calendar-blank text-base"></i>
+          <span>全學年校曆</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto w-full p-3 sm:p-5 flex-1 flex flex-col md:flex-row gap-5">
+
+    <!-- Left Control Panel: Date Selector, School Day Status & Quick Insert -->
+    <aside class="w-full md:w-80 flex flex-col gap-4 no-print shrink-0">
+      
+      <!-- Date Navigation Box -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold tracking-wider text-slate-400 uppercase">日期導覽</span>
+          <button onclick="jumpToToday()" class="text-xs text-emerald-700 font-semibold hover:underline flex items-center gap-0.5">
+            <i class="ph ph-arrow-counter-clockwise"></i> 今日
+          </button>
+        </div>
+
+        <!-- Date Input Picker -->
+        <div class="flex items-center gap-2 mb-3">
+          <input type="date" id="targetDateInput" min="2026-09-01" max="2027-07-31" 
+                 class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <!-- Prev / Next Navigation -->
+        <div class="grid grid-cols-2 gap-2 mb-4">
+          <button onclick="shiftDay(-1)" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-medium flex items-center justify-center gap-1 transition">
+            <i class="ph ph-caret-left"></i> 前一日
+          </button>
+          <button onclick="shiftDay(1)" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-medium flex items-center justify-center gap-1 transition">
+            下一日 <i class="ph ph-caret-right"></i>
+          </button>
+        </div>
+
+        <!-- Prev / Next SCHOOL Day Only -->
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="navigateSchoolDay(-1)" class="px-3 py-2 bg-emerald-50 text-emerald-800 rounded-xl hover:bg-emerald-100 text-xs font-medium flex items-center justify-center gap-1 transition">
+            <i class="ph ph-skip-back"></i> 上一個上學日
+          </button>
+          <button onclick="navigateSchoolDay(1)" class="px-3 py-2 bg-emerald-50 text-emerald-800 rounded-xl hover:bg-emerald-100 text-xs font-medium flex items-center justify-center gap-1 transition">
+            下一個上學日 <i class="ph ph-skip-forward"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- School Calendar Status of the Selected Date -->
+      <div id="schoolDayCard" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 transition-all">
+        <div class="flex items-center gap-2 mb-2">
+          <span id="dayStatusBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+            上學日
+          </span>
+          <span id="calendarWeekInfo" class="text-xs text-slate-500 font-medium">第 1 週</span>
+        </div>
+        <h3 id="calendarDateDisplay" class="text-lg font-bold text-slate-800">2026年9月1日</h3>
+        <p id="calendarEventDesc" class="text-xs text-slate-600 mt-1 min-h-[1.5rem]">開學日 / 正常上課</p>
+      </div>
+
+      <!-- Quick Text Templates for Fast Entry -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <span class="text-xs font-semibold tracking-wider text-slate-400 uppercase block mb-2">常用登記詞條快捷點擊</span>
+        <div class="flex flex-wrap gap-1.5" id="templateTagsContainer">
+          <button onclick="quickAppend('抄寫')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">抄寫</button>
+          <button onclick="quickAppend('完成練習簿')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">完成練習簿</button>
+          <button onclick="quickAppend('課堂工作紙一張')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">工作紙</button>
+          <button onclick="quickAppend('溫習單元')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">溫習單元</button>
+          <button onclick="quickAppend('默書準備')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">默書準備</button>
+          <button onclick="quickAppend('簽名')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">家長簽名</button>
+          <button onclick="quickAppend('預習第 課')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">預習課文</button>
+          <button onclick="quickAppend('改正')" class="text-xs bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 transition">改正</button>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <div class="flex flex-col gap-2">
+          <button onclick="copyPreviousDayMemo()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition">
+            <i class="ph ph-copy"></i> 複製昨日測驗備忘
+          </button>
+          <button onclick="clearCurrentDiary()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition">
+            <i class="ph ph-trash"></i> 清空今日內容
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Side: The Physical Diary Replica Layout -->
+    <section class="flex-1">
+      <div class="bg-[#faf7f2] rounded-2xl shadow-lg border-2 border-amber-900/20 paper-texture p-4 sm:p-7 relative print-full">
+        
+        <!-- Red margin line like physical notebooks -->
+        <div class="absolute top-0 bottom-0 left-12 md:left-24 border-r border-red-300 opacity-60 pointer-events-none hidden sm:block"></div>
+
+        <!-- School Diary Title & Date Banner -->
+        <div class="text-center mb-5 pb-3 border-b-2 border-amber-900/30">
+          <h2 class="text-2xl font-bold tracking-widest text-slate-800" style="font-family: 'Noto Serif TC', serif;">家 課 登 記 欄</h2>
+          
+          <div class="mt-3 flex flex-wrap items-center justify-between text-sm sm:text-base px-2 font-medium text-slate-700">
+            <div class="flex items-center gap-2">
+              <span class="bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-0.5 rounded text-xs sm:text-sm font-bold" id="diaryMonthBox">9 月</span>
+              <span class="bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-0.5 rounded text-xs sm:text-sm font-bold" id="diaryDayBox">1 日</span>
+            </div>
+            <div>
+              <span class="text-slate-500 text-xs sm:text-sm mr-1">星期</span>
+              <span class="font-bold text-amber-950 text-base sm:text-lg" id="diaryWeekdayText">二</span>
+            </div>
+            <div class="text-xs sm:text-sm text-slate-500">
+              第 <span class="font-bold text-slate-800" id="diaryWeekNum">1</span> 週
+            </div>
+          </div>
+        </div>
+
+        <!-- Holiday / Non-School Day Banner Notice (If Applicable) -->
+        <div id="holidayWarningBanner" class="hidden mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="ph ph-info text-amber-700 text-lg"></i>
+            <span>校曆提示：本日為 <strong id="holidayReasonText">國慶假期</strong>，無須上課。</span>
+          </div>
+          <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded">非上學日</span>
+        </div>
+
+        <!-- Homework Table matching the exact rows in the photo -->
+        <div class="border-2 border-slate-700 rounded-lg overflow-hidden bg-white shadow-sm">
+          
+          <!-- 中文 Chinese -->
+          <div class="flex border-b border-slate-400 min-h-[58px]">
+            <div class="w-16 sm:w-24 bg-slate-50 border-r border-slate-400 flex items-center justify-center font-bold text-slate-700 text-sm sm:text-base shrink-0 select-none">
+              中 文
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_chinese" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="請登記中文家課..." 
+                        rows="2"
+                        class="w-full h-full p-2.5 text-sm sm:text-base focus:bg-amber-50/40 focus:outline-none resize-none font-sans text-slate-800"></textarea>
+            </div>
+          </div>
+
+          <!-- 數學 Math -->
+          <div class="flex border-b border-slate-400 min-h-[58px]">
+            <div class="w-16 sm:w-24 bg-slate-50 border-r border-slate-400 flex items-center justify-center font-bold text-slate-700 text-sm sm:text-base shrink-0 select-none">
+              數 學
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_math" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="請登記數學家課..." 
+                        rows="2"
+                        class="w-full h-full p-2.5 text-sm sm:text-base focus:bg-amber-50/40 focus:outline-none resize-none font-sans text-slate-800"></textarea>
+            </div>
+          </div>
+
+          <!-- 英文 English -->
+          <div class="flex border-b border-slate-400 min-h-[58px]">
+            <div class="w-16 sm:w-24 bg-slate-50 border-r border-slate-400 flex items-center justify-center font-bold text-slate-700 text-sm sm:text-base shrink-0 select-none">
+              英 文
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_english" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="請登記英文家課 (例如：Dict 3, WS p.2)..." 
+                        rows="2"
+                        class="w-full h-full p-2.5 text-sm sm:text-base focus:bg-amber-50/40 focus:outline-none resize-none font-sans text-slate-800"></textarea>
+            </div>
+          </div>
+
+          <!-- 常識 General Studies -->
+          <div class="flex border-b border-slate-400 min-h-[58px]">
+            <div class="w-16 sm:w-24 bg-slate-50 border-r border-slate-400 flex items-center justify-center font-bold text-slate-700 text-sm sm:text-base shrink-0 select-none">
+              常 識
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_gs" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="請登記常識家課 (例如：溫習第4課)..." 
+                        rows="2"
+                        class="w-full h-full p-2.5 text-sm sm:text-base focus:bg-amber-50/40 focus:outline-none resize-none font-sans text-slate-800"></textarea>
+            </div>
+          </div>
+
+          <!-- 其他 Others -->
+          <div class="flex border-b border-slate-400 min-h-[58px]">
+            <div class="w-16 sm:w-24 bg-slate-50 border-r border-slate-400 flex items-center justify-center font-bold text-slate-700 text-sm sm:text-base shrink-0 select-none">
+              其 他
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_other" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="其他事項、通告、視藝、音樂材料..." 
+                        rows="2"
+                        class="w-full h-full p-2.5 text-sm sm:text-base focus:bg-amber-50/40 focus:outline-none resize-none font-sans text-slate-800"></textarea>
+            </div>
+          </div>
+
+          <!-- Bottom Section: Test/Exam/Dictation Memos (as shown in user's handwritten photo) -->
+          <div class="flex border-b border-slate-400 min-h-[110px] bg-amber-50/20">
+            <div class="w-16 sm:w-24 bg-amber-50/70 border-r border-slate-400 flex flex-col items-center justify-center text-center p-1 text-xs sm:text-sm font-bold text-amber-900 shrink-0 select-none">
+              <span>測驗 / 默書</span>
+              <span>備忘通知</span>
+              <span class="text-[10px] font-normal text-amber-700 mt-1">(下週/近日)</span>
+            </div>
+            <div class="flex-1 relative">
+              <textarea id="hw_memos" onfocus="setCurrentField(this)" oninput="scheduleAutoSave()"
+                        placeholder="例如：&#10;10/21 (Wed) English Test (Textbook, Vocab, Phonics...)&#10;22/10 (四) 普通話筆試 (第1-3課音節拼寫)" 
+                        rows="4"
+                        class="w-full h-full p-2.5 text-sm sm:text-base text-blue-900 focus:bg-amber-50/50 focus:outline-none resize-none leading-relaxed"></textarea>
+            </div>
+          </div>
+
+          <!-- Signatures Section -->
+          <div class="grid grid-cols-2 divide-x divide-slate-400 bg-slate-50/60 text-xs sm:text-sm">
+            <div class="p-3 flex items-center justify-between">
+              <span class="font-bold text-slate-600">家長簽署：</span>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" id="hw_parentSign" onchange="scheduleAutoSave()" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500">
+                <span class="text-slate-700 font-medium">已查閱簽署</span>
+              </label>
+            </div>
+            <div class="p-3 flex items-center justify-between">
+              <span class="font-bold text-slate-600">班主任簽署：</span>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" id="hw_teacherSign" onchange="scheduleAutoSave()" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500">
+                <span class="text-slate-700 font-medium">已檢閱</span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Notice -->
+        <div class="mt-4 flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-200">
+          <span class="flex items-center gap-1"><i class="ph ph-cloud-check text-emerald-600"></i> 所有裝置即時連線更新</span>
+          <span>同善堂中學小學部 教務處 校曆編制</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Full Academic Calendar Modal -->
+  <div id="calendarModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-800 text-white">
+        <div>
+          <h3 class="font-bold text-base md:text-lg">同善堂中學小學部 2026-2027 校曆表</h3>
+          <p class="text-xs text-emerald-200">綠色：全體放假／非上學日 | 橘色：段考/大考</p>
+        </div>
+        <button onclick="toggleQuickCalendarModal()" class="text-white hover:text-emerald-200 p-1 rounded-lg">
+          <i class="ph ph-x text-2xl"></i>
+        </button>
+      </div>
+
+      <!-- Calendar Body -->
+      <div class="p-4 overflow-y-auto flex-1 space-y-4">
+        <!-- Month quick selectors -->
+        <div class="flex flex-wrap gap-1.5 pb-2 border-b border-slate-200">
+          <button onclick="renderCalendarGrid(2026, 8)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-100 text-emerald-800">2026年9月</button>
+          <button onclick="renderCalendarGrid(2026, 9)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">10月</button>
+          <button onclick="renderCalendarGrid(2026, 10)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">11月</button>
+          <button onclick="renderCalendarGrid(2026, 11)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">12月</button>
+          <button onclick="renderCalendarGrid(2027, 0)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">2027年1月</button>
+          <button onclick="renderCalendarGrid(2027, 1)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">2月</button>
+          <button onclick="renderCalendarGrid(2027, 2)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">3月</button>
+          <button onclick="renderCalendarGrid(2027, 3)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">4月</button>
+          <button onclick="renderCalendarGrid(2027, 4)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">5月</button>
+          <button onclick="renderCalendarGrid(2027, 5)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">6月</button>
+          <button onclick="renderCalendarGrid(2027, 6)" class="cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">7月</button>
+        </div>
+
+        <div id="calendarMonthTitle" class="text-base font-bold text-slate-800"></div>
+
+        <!-- 7-Col Grid -->
+        <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs text-slate-500 border-b pb-2">
+          <div class="text-red-500">日</div>
+          <div>一</div>
+          <div>二</div>
+          <div>三</div>
+          <div>四</div>
+          <div>五</div>
+          <div class="text-red-500">六</div>
+        </div>
+        <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1.5 text-xs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Alert Toast Box (Never uses window.alert) -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
+    <i class="ph ph-check-circle text-emerald-400 text-base"></i>
+    <span id="toastMsg">已保存</span>
+  </div>
+
+  <!-- Firebase Script Modules for Real-time Multi-device Sync -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Escola Tong Sin Tong School Calendar 2026-2027 Data (Extracted directly from 校曆表)
+    const SCHOOL_YEAR_EVENTS = {
+      // 2026 September
+      "2026-09-01": { type: "school", event: "開學日", week: 1 },
+      "2026-09-02": { type: "holiday", event: "教職員學習匯報 暫停授課", week: 1 },
+      "2026-09-10": { type: "holiday", event: "教師節放假", week: 2 },
+      "2026-09-28": { type: "holiday", event: "中秋節放假", week: 5 },
+
+      // October
+      "2026-10-01": { type: "holiday", event: "國慶節假期", week: 5 },
+      "2026-10-02": { type: "holiday", event: "國慶節假期", week: 5 },
+      "2026-10-03": { type: "holiday", event: "校假及學習暫停", week: 5 },
+      "2026-10-19": { type: "holiday", event: "重陽節放假", week: 8 },
+
+      // November
+      "2026-11-02": { type: "holiday", event: "追思節放假", week: 10 },
+      "2026-11-04": { type: "exam", event: "上學期期中考試(至7日)", week: 10 },
+      "2026-11-05": { type: "exam", event: "上學期期中考試", week: 10 },
+      "2026-11-06": { type: "exam", event: "上學期期中考試", week: 10 },
+      "2026-11-07": { type: "exam", event: "上學期期中考試", week: 10 },
+      "2026-11-09": { type: "holiday", event: "校假 (十月初一)", week: 11 },
+      "2026-11-10": { type: "holiday", event: "校慶日放假", week: 11 },
+      "2026-11-19": { type: "activity", event: "校運會 (19-20日)", week: 12 },
+      "2026-11-20": { type: "activity", event: "校運會", week: 12 },
+      "2026-11-28": { type: "holiday", event: "校慶假", week: 13 },
+      "2026-11-30": { type: "holiday", event: "校慶補假", week: 14 },
+
+      // December
+      "2026-12-08": { type: "holiday", event: "聖母無原罪瞻禮放假", week: 15 },
+      "2026-12-18": { type: "holiday", event: "下午慶祝活動及家長會 / 學習暫停", week: 16 },
+      "2026-12-19": { type: "holiday", event: "教職員及學習暫停", week: 16 },
+      "2026-12-20": { type: "holiday", event: "澳門特別行政區成立日(冬至、聖誕放假)", week: 17 },
+      "2026-12-21": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+      "2026-12-22": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+      "2026-12-23": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+      "2026-12-24": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+      "2026-12-25": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+      "2026-12-26": { type: "holiday", event: "聖誕及冬至假期", week: 17 },
+
+      // 2027 January
+      "2027-01-01": { type: "holiday", event: "元旦放假", week: 18 },
+      "2027-01-02": { type: "holiday", event: "元旦假期", week: 18 },
+      "2027-01-20": { type: "exam", event: "上學期期末考試 (20-23日)", week: 21 },
+      "2027-01-21": { type: "exam", event: "上學期期末考試", week: 21 },
+      "2027-01-22": { type: "exam", event: "上學期期末考試", week: 21 },
+      "2027-01-23": { type: "exam", event: "上學期期末考試", week: 21 },
+      "2027-01-27": { type: "holiday", event: "校假", week: 1 },
+      "2027-01-28": { type: "holiday", event: "校假", week: 1 },
+      "2027-01-29": { type: "holiday", event: "校假", week: 1 },
+
+      // February (Spring Festival)
+      "2027-02-01": { type: "holiday", event: "春節假期 (至14日)", week: 1 },
+      "2027-02-02": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-03": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-04": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-05": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-06": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-07": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-08": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-09": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-10": { type: "holiday", event: "春節假期 (正月初一)", week: 1 },
+      "2027-02-11": { type: "holiday", event: "春節假期 (正月初二)", week: 1 },
+      "2027-02-12": { type: "holiday", event: "春節假期 (正月初三)", week: 1 },
+      "2027-02-13": { type: "holiday", event: "春節假期", week: 1 },
+      "2027-02-14": { type: "holiday", event: "春節假期結束", week: 1 },
+
+      // March
+      "2027-03-08": { type: "holiday", event: "三八婦女節放假", week: 5 },
+      "2027-03-26": { type: "holiday", event: "復活節放假 (26-29日)", week: 7 },
+      "2027-03-27": { type: "holiday", event: "復活節假期", week: 7 },
+      "2027-03-28": { type: "holiday", event: "復活節假期", week: 7 },
+      "2027-03-29": { type: "holiday", event: "復活節假期", week: 7 },
+
+      // April
+      "2027-04-05": { type: "holiday", event: "清明節放假 (5-6日)", week: 9 },
+      "2027-04-06": { type: "holiday", event: "清明節放假", week: 9 },
+      "2027-04-14": { type: "exam", event: "下學期期中考試 (14-17日)", week: 10 },
+      "2027-04-15": { type: "exam", event: "下學期期中考試", week: 10 },
+      "2027-04-16": { type: "exam", event: "下學期期中考試", week: 10 },
+      "2027-04-17": { type: "exam", event: "下學期期中考試", week: 10 },
+
+      // May
+      "2027-05-01": { type: "holiday", event: "勞動節放假", week: 12 },
+      "2027-05-03": { type: "holiday", event: "勞動節補假", week: 13 },
+      "2027-05-13": { type: "holiday", event: "佛誕節放假", week: 14 },
+
+      // June
+      "2027-06-01": { type: "holiday", event: "六一兒童節放假", week: 17 },
+      "2027-06-09": { type: "holiday", event: "端午節放假", week: 18 },
+      "2027-06-25": { type: "exam", event: "下學期期終考試 (25-30日)", week: 20 },
+      "2027-06-26": { type: "exam", event: "下學期期終考試", week: 20 },
+      "2027-06-28": { type: "exam", event: "下學期期終考試", week: 21 },
+      "2027-06-29": { type: "exam", event: "下學期期終考試", week: 21 },
+      "2027-06-30": { type: "exam", event: "下學期期終考試", week: 21 },
+
+      // July
+      "2027-07-15": { type: "holiday", event: "結業禮 / 結業假期", week: 22 },
+      "2027-07-16": { type: "holiday", event: "暑假開始", week: 22 }
+    };
+
+    // Firebase Config & Init
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'tong-sin-tong-diary';
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let unsubscribeFirestore = null;
+
+    let saveTimer = null;
+    let currentSelectedDate = "2026-09-01";
+    let activeInputElement = null;
+
+    window.setCurrentField = function(el) {
+      activeInputElement = el;
+    };
+
+    // Quick Append helper
+    window.quickAppend = function(text) {
+      if (!activeInputElement) {
+        activeInputElement = document.getElementById('hw_chinese');
+      }
+      const val = activeInputElement.value;
+      activeInputElement.value = val ? val + "\n• " + text : "• " + text;
+      activeInputElement.focus();
+      scheduleAutoSave();
+    };
+
+    // Initialize Auth & Firestore
+    async function initCloudSync() {
+      const syncBadge = document.getElementById('syncStatusBadge');
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+
+      try {
+        if (typeof __firebase_config !== 'undefined') {
+          const firebaseConfig = JSON.parse(__firebase_config);
+          const app = initializeApp(firebaseConfig);
+          db = getFirestore(app);
+          auth = getAuth(app);
+
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          currentUser = auth.currentUser;
+
+          syncDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+          syncText.textContent = "雲端即時同步中";
+          syncBadge.className = "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-900/60 border border-emerald-500";
+          
+          // Bind real-time listener for current date
+          bindDateListener(currentSelectedDate);
+        } else {
+          // In-memory fallback if config is absent
+          syncDot.className = "w-2.5 h-2.5 rounded-full bg-blue-400";
+          syncText.textContent = "本地工作模式";
+          loadFromLocalMemory(currentSelectedDate);
+        }
+      } catch (err) {
+        console.error("Cloud Sync Error:", err);
+        syncDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+        syncText.textContent = "連線中 (離線模式)";
+        loadFromLocalMemory(currentSelectedDate);
+      }
+    }
+
+    // Bind Firestore listener for current date
+    function bindDateListener(dateStr) {
+      if (!db || !currentUser) return;
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+      }
+
+      // RULE 1: Strict Paths - public shared class handbook
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'diary_dates', dateStr);
+
+      unsubscribeFirestore = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          populateForm(data);
+        } else {
+          // If fresh day, clear form
+          resetFormValues();
+        }
+      }, (error) => {
+        console.error("Firestore listen error: ", error);
+        showToast("同步中出現警告，本地快取保留中");
+      });
+    }
+
+    function populateForm(data) {
+      // Don't overwrite if user is actively typing in a field unless remote is strictly newer
+      const activeId = document.activeElement ? document.activeElement.id : null;
+      
+      if (activeId !== 'hw_chinese') document.getElementById('hw_chinese').value = data.chinese || '';
+      if (activeId !== 'hw_math') document.getElementById('hw_math').value = data.math || '';
+      if (activeId !== 'hw_english') document.getElementById('hw_english').value = data.english || '';
+      if (activeId !== 'hw_gs') document.getElementById('hw_gs').value = data.gs || '';
+      if (activeId !== 'hw_other') document.getElementById('hw_other').value = data.other || '';
+      if (activeId !== 'hw_memos') document.getElementById('hw_memos').value = data.memos || '';
+      
+      document.getElementById('hw_parentSign').checked = !!data.parentSigned;
+      document.getElementById('hw_teacherSign').checked = !!data.teacherSigned;
+    }
+
+    function resetFormValues() {
+      document.getElementById('hw_chinese').value = '';
+      document.getElementById('hw_math').value = '';
+      document.getElementById('hw_english').value = '';
+      document.getElementById('hw_gs').value = '';
+      document.getElementById('hw_other').value = '';
+      document.getElementById('hw_memos').value = '';
+      document.getElementById('hw_parentSign').checked = false;
+      document.getElementById('hw_teacherSign').checked = false;
+    }
+
+    // In-memory local fallback store
+    const localStore = {};
+    function loadFromLocalMemory(dateStr) {
+      const data = localStore[dateStr] || {};
+      populateForm(data);
+    }
+
+    // Auto Save with debounce
+    window.scheduleAutoSave = function() {
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+      syncDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-spin";
+      syncText.textContent = "儲存中...";
+
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        await executeSave();
+      }, 600);
+    };
+
+    async function executeSave() {
+      const payload = {
+        date: currentSelectedDate,
+        chinese: document.getElementById('hw_chinese').value,
+        math: document.getElementById('hw_math').value,
+        english: document.getElementById('hw_english').value,
+        gs: document.getElementById('hw_gs').value,
+        other: document.getElementById('hw_other').value,
+        memos: document.getElementById('hw_memos').value,
+        parentSigned: document.getElementById('hw_parentSign').checked,
+        teacherSigned: document.getElementById('hw_teacherSign').checked,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Always save to memory store
+      localStore[currentSelectedDate] = payload;
+
+      if (db && currentUser) {
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'diary_dates', currentSelectedDate);
+          await setDoc(docRef, payload, { merge: true });
+        } catch (err) {
+          console.error("Save error:", err);
+        }
+      }
+
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+      syncDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+      syncText.textContent = "已全部同步";
+      showToast("已同步更新至雲端！");
+    }
+
+    // UI Toast
+    function showToast(text) {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMsg').textContent = text;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2000);
+    }
+
+    // Helper: Is School Day based on calendar and weekdays
+    function checkDateCalendarInfo(dateStr) {
+      const d = new Date(dateStr + "T00:00:00");
+      const dayOfWeek = d.getDay(); // 0 is Sun, 6 is Sat
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      
+      const customEvent = SCHOOL_YEAR_EVENTS[dateStr];
+      let isHoliday = isWeekend;
+      let eventName = "";
+      let type = isWeekend ? "weekend" : "regular";
+
+      if (customEvent) {
+        eventName = customEvent.event;
+        type = customEvent.type;
+        if (customEvent.type === "holiday") {
+          isHoliday = true;
+        } else if (customEvent.type === "school" || customEvent.type === "exam") {
+          isHoliday = false; // Forced school or exam
+        }
+      }
+
+      // Calculate approximate school week
+      const startRef = new Date("2026-09-01T00:00:00");
+      const diffDays = Math.floor((d - startRef) / (1000 * 60 * 60 * 24));
+      let weekNum = Math.floor(diffDays / 7) + 1;
+      if (weekNum < 1) weekNum = 1;
+
+      return {
+        isHoliday,
+        eventName: eventName || (isWeekend ? "週六日假期" : "正常上學日"),
+        type,
+        weekNum: customEvent?.week || weekNum
+      };
+    }
+
+    // Update Date Display on Screen
+    window.updateDateDisplay = function(dateStr) {
+      currentSelectedDate = dateStr;
+      document.getElementById('targetDateInput').value = dateStr;
+
+      const d = new Date(dateStr + "T00:00:00");
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+      const weekdayStr = weekdays[d.getDay()];
+
+      const info = checkDateCalendarInfo(dateStr);
+
+      // Top Diary Header
+      document.getElementById('diaryMonthBox').textContent = `${month} 月`;
+      document.getElementById('diaryDayBox').textContent = `${day} 日`;
+      document.getElementById('diaryWeekdayText').textContent = weekdayStr;
+      document.getElementById('diaryWeekNum').textContent = info.weekNum;
+
+      // Sidebar Status Card
+      document.getElementById('calendarDateDisplay').textContent = `${d.getFullYear()}年${month}月${day}日 (星期${weekdayStr})`;
+      document.getElementById('calendarWeekInfo').textContent = `第 ${info.weekNum} 週`;
+      document.getElementById('calendarEventDesc').textContent = info.eventName;
+
+      const badge = document.getElementById('dayStatusBadge');
+      const warningBanner = document.getElementById('holidayWarningBanner');
+      const warningText = document.getElementById('holidayReasonText');
+
+      if (info.isHoliday) {
+        badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-700";
+        badge.textContent = "放假日 / 非上學日";
+        warningBanner.classList.remove('hidden');
+        warningText.textContent = info.eventName;
+      } else if (info.type === 'exam') {
+        badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800";
+        badge.textContent = "測驗 / 考試期間";
+        warningBanner.classList.add('hidden');
+      } else {
+        badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800";
+        badge.textContent = "正式上學日";
+        warningBanner.classList.add('hidden');
+      }
+
+      // Rebind cloud sync listener for the new date
+      if (db && currentUser) {
+        bindDateListener(dateStr);
+      } else {
+        loadFromLocalMemory(dateStr);
+      }
+    };
+
+    // Date Shift functions
+    window.shiftDay = function(days) {
+      const cur = new Date(currentSelectedDate + "T00:00:00");
+      cur.setDate(cur.getDate() + days);
+      const iso = cur.toISOString().split('T')[0];
+      updateDateDisplay(iso);
+    };
+
+    window.jumpToToday = function() {
+      // Defaults to 2026-09-01 if outside academic year
+      const now = new Date();
+      const y = now.getFullYear();
+      let target = now.toISOString().split('T')[0];
+      if (y < 2026 || y > 2027) {
+        target = "2026-09-01";
+      }
+      updateDateDisplay(target);
+    };
+
+    window.navigateSchoolDay = function(direction) {
+      let cur = new Date(currentSelectedDate + "T00:00:00");
+      for (let i = 0; i < 40; i++) {
+        cur.setDate(cur.getDate() + direction);
+        const iso = cur.toISOString().split('T')[0];
+        const info = checkDateCalendarInfo(iso);
+        if (!info.isHoliday) {
+          updateDateDisplay(iso);
+          return;
+        }
+      }
+    };
+
+    window.copyPreviousDayMemo = function() {
+      const cur = new Date(currentSelectedDate + "T00:00:00");
+      cur.setDate(cur.getDate() - 1);
+      const prevIso = cur.toISOString().split('T')[0];
+      const prevData = localStore[prevIso];
+      if (prevData && prevData.memos) {
+        document.getElementById('hw_memos').value = prevData.memos;
+        scheduleAutoSave();
+        showToast("已從昨日載入備忘！");
+      } else {
+        showToast("昨日尚無備忘紀錄");
+      }
+    };
+
+    window.clearCurrentDiary = function() {
+      resetFormValues();
+      scheduleAutoSave();
+      showToast("已清空本頁內容");
+    };
+
+    // Calendar Modal
+    window.toggleQuickCalendarModal = function() {
+      const modal = document.getElementById('calendarModal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        const cur = new Date(currentSelectedDate + "T00:00:00");
+        renderCalendarGrid(cur.getFullYear(), cur.getMonth());
+      }
+    };
+
+    window.renderCalendarGrid = function(year, month) {
+      document.getElementById('calendarMonthTitle').textContent = `${year} 年 ${month + 1} 月`;
+      
+      // Update buttons highlight
+      const btns = document.querySelectorAll('.cal-m-btn');
+      btns.forEach(b => {
+        b.className = "cal-m-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700";
+      });
+
+      const grid = document.getElementById('calendarDaysGrid');
+      grid.innerHTML = "";
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      // Leading empty spaces
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "h-14 sm:h-16 rounded-lg bg-slate-50 opacity-40";
+        grid.appendChild(emptyCell);
+      }
+
+      // Days
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        const mStr = String(month + 1).padStart(2, '0');
+        const dStr = String(d).padStart(2, '0');
+        const dateIso = `${year}-${mStr}-${dStr}`;
+        const info = checkDateCalendarInfo(dateIso);
+
+        let bgStyle = "bg-white border-slate-200 hover:border-emerald-500";
+        let textStyle = "text-slate-800";
+        let subText = "";
+
+        if (info.isHoliday) {
+          bgStyle = "bg-green-100/70 border-green-300 text-green-900"; // Exact green as school calendar
+          subText = info.eventName ? info.eventName.substring(0, 5) : "假";
+        } else if (info.type === 'exam') {
+          bgStyle = "bg-amber-100 border-amber-300 text-amber-950 font-bold";
+          subText = "考試";
+        }
+
+        if (dateIso === currentSelectedDate) {
+          bgStyle += " ring-2 ring-emerald-600 ring-offset-1";
+        }
+
+        cell.className = `h-14 sm:h-16 p-1 border rounded-lg flex flex-col justify-between cursor-pointer transition select-none ${bgStyle}`;
+        cell.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs ${textStyle}">${d}</span>
+            ${info.type === 'exam' ? '<i class="ph ph-exam text-amber-700"></i>' : ''}
+          </div>
+          <span class="text-[10px] truncate text-slate-600 leading-tight">${subText}</span>
+        `;
+
+        cell.onclick = () => {
+          updateDateDisplay(dateIso);
+          toggleQuickCalendarModal();
+        };
+
+        grid.appendChild(cell);
+      }
+    };
+
+    // Event listener on date picker
+    document.getElementById('targetDateInput').addEventListener('change', (e) => {
+      if (e.target.value) {
+        updateDateDisplay(e.target.value);
+      }
+    });
+
+    // Bootstrapping
+    window.addEventListener('load', () => {
+      updateDateDisplay("2026-09-01"); // Start at Opening Day
+      initCloudSync();
+    });
+  </script>
+</body>
+</html>
